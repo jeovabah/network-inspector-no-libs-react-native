@@ -39,64 +39,59 @@ app.use(express.urlencoded({ extended: true }))
 app.use(express.raw())
 app.use(express.text())
 
-// Store the last 100 requests
 const requests: RequestLog[] = []
 
 io.on('connection', (socket) => {
-  console.log('Client connected')
+  console.log('Client connectedddd')
   
-  // Send existing requests to new client
   socket.emit('existingRequests', requests)
 })
 
 app.post('/', (req, res) => {
   const requestData = req.body;
+  console.log("Received webhook data:", JSON.stringify(requestData, null, 2));
   
-  // Extract data from the body if it exists
-  const bodyData = typeof requestData.body === 'object' ? requestData.body : {};
-  
-  // Create a standardized log entry
   const log: RequestLog = {
     id: Date.now().toString(),
-    type: bodyData.type || 'request',
-    timestamp: bodyData.timestamp || new Date().toISOString(),
-    url: bodyData.url || '',
-    fullUrl: bodyData.fullUrl || '',
-    method: bodyData.method?.toUpperCase() || 'GET',
-    headers: bodyData.headers || {},
-    body: bodyData.body,
-    data: bodyData.data,
-    params: bodyData.params,
-    status: bodyData.status,
-    message: bodyData.message,
-    requestBody: bodyData.requestBody,
-    requestParams: bodyData.requestParams,
-    response: bodyData.response
+    type: requestData.type || 'request',
+    timestamp: requestData.timestamp || new Date().toISOString(),
+    url: requestData.url || '',
+    fullUrl: requestData.fullUrl || '',
+    method: requestData.method?.toUpperCase() || 'GET',
+    headers: requestData.headers || {},
+    body: requestData.body,
+    data: requestData.data,
+    params: requestData.params,
+    status: requestData.status,
+    message: requestData.message,
+    requestBody: requestData.requestBody,
+    requestParams: requestData.requestParams,
+    response: requestData.response
   };
 
-  // Clean up the URL by removing leading/trailing slashes and ensuring proper format
+
   if (log.url) {
     log.url = log.url.replace(/^\/+|\/+$/g, '');
   }
 
-  // Ensure fullUrl is properly formatted
   if (log.fullUrl) {
-    log.fullUrl = log.fullUrl.replace(/\/+/g, '/');
+    log.fullUrl = log.fullUrl.replace(/\/+/g, '/').replace(/:\/\/+/, '://');
   }
+
+  console.log("Processed log:", JSON.stringify(log, null, 2));
 
   requests.push(log);
   if (requests.length > 100) {
     requests.shift();
   }
 
-  // Emit the new request to all connected clients
   io.emit('newRequest', log);
 
   res.json({ message: 'Request received' });
 });
 
-// Fallback route for any other requests
 app.all('*', (req, res) => {
+  console.log('Request received', req, req.url)
   const request: RequestLog = {
     id: Date.now().toString(),
     type: 'request',
@@ -114,7 +109,6 @@ app.all('*', (req, res) => {
     requests.shift();
   }
 
-  // Emit the new request to all connected clients
   io.emit('newRequest', request);
 
   res.json({ message: 'Request received' });
