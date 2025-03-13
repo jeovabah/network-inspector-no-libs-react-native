@@ -64,6 +64,7 @@ const Dashboard = () => {
   const borderColor = useColorModeValue("gray.200", "gray.700");
   const cardBg = useColorModeValue("white", "gray.800");
   const codeBg = useColorModeValue("gray.50", "gray.700");
+  const [socket, setSocket] = useState<any>(null);
 
   // Função auxiliar para verificar se um objeto tem propriedades
   const hasProperties = (obj: unknown): boolean => {
@@ -99,27 +100,27 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    const socket = io("http://localhost:3001");
+    const socketInstance = io("http://localhost:3001");
+    setSocket(socketInstance);
 
-    socket.on("connect", () => {
+    socketInstance.on("connect", () => {
       console.log("Socket connected");
     });
 
-    socket.on("connect_error", (error) => {
+    socketInstance.on("connect_error", (error) => {
       console.error("Socket connection error:", error);
     });
 
-    socket.on("existingRequests", (existingLogs: RequestLog[]) => {
+    socketInstance.on("existingRequests", (existingLogs: RequestLog[]) => {
       setLogs(existingLogs.map(extractLogData));
     });
 
-    socket.on("newRequest", (data: RequestLog) => {
-      console.log("Received data:", data);
+    socketInstance.on("newRequest", (data: RequestLog) => {
       setLogs((prev) => [extractLogData(data), ...prev]);
     });
 
     return () => {
-      socket.disconnect();
+      socketInstance.disconnect();
     };
   }, []);
 
@@ -225,6 +226,12 @@ export default api;`;
 
   const clearLogs = () => {
     setLogs([]);
+    
+    // Enviar emit para o servidor limpar os logs
+    if (socket) {
+      socket.emit("clearLogs");
+    }
+    
     toast({
       title: t("requestsCleared"),
       status: "info",

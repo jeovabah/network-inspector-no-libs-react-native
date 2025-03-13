@@ -41,15 +41,16 @@ app.use(express.text())
 
 const requests: RequestLog[] = []
 
-io.on('connection', (socket) => {
-  console.log('Client connectedddd')
-  
+io.on('connection', (socket) => {  
+  socket.on('clearLogs', () => {
+    requests.length = 0
+    io.emit('existingRequests', [])
+  })
   socket.emit('existingRequests', requests)
 })
 
 app.post('/', (req, res) => {
   const requestData = req.body;
-  console.log("Received webhook data:", JSON.stringify(requestData, null, 2));
   
   const log: RequestLog = {
     id: Date.now().toString(),
@@ -78,8 +79,6 @@ app.post('/', (req, res) => {
     log.fullUrl = log.fullUrl.replace(/\/+/g, '/').replace(/:\/\/+/, '://');
   }
 
-  console.log("Processed log:", JSON.stringify(log, null, 2));
-
   requests.push(log);
   if (requests.length > 100) {
     requests.shift();
@@ -91,7 +90,6 @@ app.post('/', (req, res) => {
 });
 
 app.all('*', (req, res) => {
-  console.log('Request received', req, req.url)
   const request: RequestLog = {
     id: Date.now().toString(),
     type: 'request',
